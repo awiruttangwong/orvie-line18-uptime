@@ -2,9 +2,11 @@ name: Keep LINE 18 Awake
 
 on:
   schedule:
-    # Offset from the top of the hour to reduce GitHub schedule congestion.
-    # Six inbound requests/hour keeps the Render Free service below its 15-minute idle limit.
-    - cron: "3,13,23,33,43,53 * * * *"
+    # Bangkok business window: wake before 06:00, then keep inbound gaps < 15 minutes.
+    # UTC 22:43/22:53 = Bangkok 05:43/05:53.
+    - cron: "43,53 22 * * *"
+    # UTC 23:03 through 18:53 = Bangkok 06:03 through 01:53.
+    - cron: "3,13,23,33,43,53 0-18,23 * * *"
   workflow_dispatch:
 
 permissions:
@@ -27,17 +29,7 @@ jobs:
           for attempt in 1 2 3; do
             echo "Attempt $attempt"
             if curl -fsS --connect-timeout 15 --max-time 100 "$URL" -o /tmp/line18-health.json; then
-              if python - <<'PY'
-import json
-from pathlib import Path
-
-health = json.loads(Path("/tmp/line18-health.json").read_text())
-assert health.get("status") == "ok", health
-assert health.get("owner_report", {}).get("background_alive") is True, health
-assert health.get("owner_report_notifier", {}).get("background_alive") is True, health
-print("LINE 18 reachable; report + notifier workers alive")
-PY
-              then
+              if python -c 'import json; from pathlib import Path; h=json.loads(Path("/tmp/line18-health.json").read_text()); assert h.get("status")=="ok", h; assert h.get("owner_report",{}).get("background_alive") is True, h; assert h.get("owner_report_notifier",{}).get("background_alive") is True, h; print("LINE 18 reachable; report + notifier workers alive")'; then
                 exit 0
               fi
             fi
