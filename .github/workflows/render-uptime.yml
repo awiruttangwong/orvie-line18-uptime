@@ -14,27 +14,13 @@ permissions:
 
 concurrency:
   group: line18-render-uptime
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   wake-and-verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
-      - name: Wake Render and verify health
-        shell: bash
-        run: |
-          set -u
-          URL="https://orvie-line18-render.onrender.com/health"
-          for attempt in 1 2 3; do
-            echo "Attempt $attempt"
-            if curl -fsS --connect-timeout 15 --max-time 100 "$URL" -o /tmp/line18-health.json; then
-              if python check_health.py /tmp/line18-health.json; then
-                exit 0
-              fi
-            fi
-            sleep 20
-          done
-          echo "LINE 18 failed all external wake/health attempts" >&2
-          exit 1
+      - name: Sustain checks between delayed scheduled runs
+        run: python keep_awake.py --cycles 33 --interval 600
