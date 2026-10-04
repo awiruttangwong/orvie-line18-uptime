@@ -21,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
+      - uses: actions/checkout@v4
       - name: Wake Render and verify health
         shell: bash
         run: |
@@ -29,7 +30,7 @@ jobs:
           for attempt in 1 2 3; do
             echo "Attempt $attempt"
             if curl -fsS --connect-timeout 15 --max-time 100 "$URL" -o /tmp/line18-health.json; then
-              if python -c 'import json; from pathlib import Path; h=json.loads(Path("/tmp/line18-health.json").read_text()); assert h.get("status")=="ok", h; assert h.get("owner_report",{}).get("background_alive") is True, h; assert h.get("owner_report_notifier",{}).get("background_alive") is True, h; print("LINE 18 reachable; report + notifier workers alive")'; then
+              if python check_health.py /tmp/line18-health.json; then
                 exit 0
               fi
             fi
